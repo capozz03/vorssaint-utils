@@ -16,6 +16,26 @@ import VideoToolbox
 /// and awaited, so no buffer can still be in flight.
 final class RecorderWriter {
 
+    private static let preparationQueue = DispatchQueue(label: "com.vorssaint.recorder.prepare",
+                                                         qos: .userInitiated)
+
+    /// Encoder discovery can wait for VideoToolbox. Keep it off the UI thread
+    /// and return a fully prepared writer before any capture starts.
+    static func prepare(url: URL,
+                        pixelSize: CGSize,
+                        frameRate: Int,
+                        capturesSystemAudio: Bool,
+                        capturesMicrophone: Bool,
+                        pauseClock: RecorderPauseClock,
+                        completion: @escaping (RecorderWriter?) -> Void) {
+        preparationQueue.async {
+            let writer = RecorderWriter(url: url, pixelSize: pixelSize, frameRate: frameRate,
+                                        capturesSystemAudio: capturesSystemAudio,
+                                        capturesMicrophone: capturesMicrophone, pauseClock: pauseClock)
+            DispatchQueue.main.async { completion(writer) }
+        }
+    }
+
     enum AppendOutcome {
         case appended
         case notReady
